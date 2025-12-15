@@ -30,6 +30,7 @@ for video in video_attachments:
 os.makedirs('./downloaded_videos', exist_ok=True)
 
 for video in video_attachments:
+    print
     content = confluence.get_attachment_content(video['id'])
     with open(f'./downloaded_videos/{video["title"]}', 'wb') as file:
         file.write(content)
