@@ -1,8 +1,22 @@
-import os
+import argparse
 from atlassian import Confluence
+import openai
+import os
 import requests
 import subprocess
-import openai
+
+# create an argument parser
+parser = argparse.ArgumentParser(
+    description="Download Confluence video attachments and upload transcripts of their audio"
+)
+# add arguments
+parser.add_argument(
+    "--page-id",
+    required=True,
+    help="Confluence page ID containing video attachments"
+)
+args = parser.parse_args()
+
 
 # get OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -21,7 +35,7 @@ confluence = Confluence(
     password=os.getenv("CONFLUENCE_API_TOKEN"))
 
 #get page ID
-page_ID = 4225499148 # ID of Test Page with video attachments
+page_ID = args.page_id
 page = confluence.get_page_by_id(page_ID)
 print(f"Page title: {page['title']}")
 print()

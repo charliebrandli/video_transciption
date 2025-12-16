@@ -9,7 +9,7 @@ This script:
 
 ## What this script does
 
-The script will:
+Given a Confluence page ID, the script will:
 
 1. Connect to Confluence using the REST API
 2. Find video attachments (ending in: .mp4, .mov, .mkv) on the page
@@ -53,6 +53,14 @@ Set the following environment variables:
   Confluence API token
 
 - `OPENAI_API_KEY` 
+```
+
+## Usage
+
+Run the script by providing a Confluence page ID:
+
+```bash
+python main.py --page-id 123456789
 ```
 
 ## Output
