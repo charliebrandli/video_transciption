@@ -1,6 +1,7 @@
 import os
 from atlassian import Confluence
 import requests
+import subprocess
 
 
 # make sure env variables are set
@@ -40,12 +41,32 @@ print()
 os.makedirs('./downloaded_videos', exist_ok=True) # make a directory for the downloaded videos
 
 for video in video_attachments:
-    print(f"Downloading {video['title']}")  
+    print(f"Downloading {video['title']} ...")  
     download_url = confluence.url + video['_links']['download']
     response = requests.get(download_url, auth=(confluence.username, confluence.password))
 
     with open(f'./downloaded_videos/{video["title"]}', 'wb') as file:
         file.write(response.content)
-    print(f"Downloaded {video['title']}")
+    print(f"Done")
 print(f"Downloaded {len(video_attachments)} videos")
 print()
+
+# extract audio from videos
+os.makedirs('./audio_extractions', exist_ok=True) # make a directory for the audio
+
+for video in video_attachments:
+    video_file = f'./downloaded_videos/{video["title"]}'
+    audio_file = f'./audio_extractions/{video["title"].split(".")[0]}.wav' # add .wav extension
+    
+    if os.path.exists(audio_file):
+        print(f"Audio of this video already exists, skipping: {audio_file}")
+        continue
+
+    print(f"Extracting audio from {video['title']} ...")
+    subprocess.run([
+        'ffmpeg',
+        '-i', video_file,
+        '-ac', '1',
+        audio_file
+    ], check=True)
+    print("Done")
