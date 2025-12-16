@@ -62,14 +62,14 @@ os.makedirs('./audio_extractions', exist_ok=True) # make a directory for the aud
 
 for video in video_attachments:
     video_file = f'./downloaded_videos/{video["title"]}'
-    video_basename = video["title"].split(".")[0] # filename without extension
+    video_basename = video["title"].rsplit(".", 1)[0] # filename without extension
     audio_file = f'./audio_extractions/{video_basename}.wav' # add .wav extension
     
     if os.path.exists(audio_file):
         print(f"Audio of this video already exists, skipping: {audio_file}")
         continue
 
-    print(f"Extracting audio from {video['title']} ...")
+    print(f"Extracting audio from {video_basename} ...")
     subprocess.run([
         'ffmpeg',
         '-i', video_file,
@@ -77,21 +77,40 @@ for video in video_attachments:
         audio_file
     ], check=True)
     print("Done")
+print()
 
 # transcribe the audio
-# hardcoded for one video file only
 os.makedirs('./transcripts', exist_ok=True)
 
-audio_file = './audio_extractions/TedTalk-Karen_Faith.wav'
-with open(audio_file, "rb") as f:
+audio_folder = './audio_extractions/'
+transcript_folder = './transcripts/'
+
+for audio_file in os.listdir(audio_folder):
+    print(f"Transcribing audio from {video['title']} ...")
+
+    audio_path = os.path.join(audio_folder, audio_file)
+    basename = os.path.basename(audio_file).rsplit('.', 1)[0]
+    transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
+    
+    """
+    if os.path.exists(transcript_file):
+        print(f"Transcript already exists, skipping: {basename}")
+        continue
+    """
+    
+    transcript_text = f"TEMPORARY TRANSCRIPT PLACEHOLDER for {basename}"
+
+    """
+    audio_file = f'./audio_extractions/{basename}.wav'
+    with open(audio_file, "rb") as f:
     transcript = openai.audio.transcriptions.create(
         model="whisper-1",
         file=f
     )
-basename = os.path.basename(audio_file).split(".")[0]
-output_file = f"./transcripts/{basename}.txt"
+    """
 
-with open(output_file, "w", encoding="utf-8") as out:
-    out.write(transcript['text'])
+    with open(transcript_file, "w", encoding="utf-8") as output:
+        output.write(transcript_text)
+    print(f"Created mock transcript: {transcript_file}")
 
-#print(f"Transcribing audio from {video['title']} ...")
+    
