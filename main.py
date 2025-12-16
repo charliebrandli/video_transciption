@@ -17,16 +17,18 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# test to make sure env variables are set
+if not os.getenv("OPENAI_API_KEY"):
+    raise RuntimeError("OPENAI_API_KEY is not set")
+elif not os.getenv("CONFLUENCE_URL"):
+    raise RuntimeError("CONFLUENCE_URL is not set")
+elif not os.getenv("CONFLUENCE_EMAIL"):
+    raise RuntimeError("CONFLUENCE_EMAIL is not set")
+elif not os.getenv("CONFLUENCE_API_TOKEN"):
+    raise RuntimeError("CONFLUENCE_API_TOKEN is not set")
 
 # get OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
-if openai.api_key is None:
-    raise RuntimeError("OPENAI_API_KEY is not set")
-
-
-# test to make sure env variables are set
-if not os.getenv("CONFLUENCE_URL"):
-    raise RuntimeError("CONFLUENCE_URL is not set")
 
 # create Confluence Client
 confluence = Confluence(
@@ -78,9 +80,10 @@ for video in video_attachments:
     video_file = f'./downloaded_videos/{video["title"]}'
     video_basename = video["title"].rsplit(".", 1)[0] # filename without extension
     audio_file = f'./audio_extractions/{video_basename}.wav' # add .wav extension
-    
+
+
     if os.path.exists(audio_file):
-        print(f"Audio of this video already exists, skipping: {audio_file}")
+        print(f"Audio already exists, skipping: {audio_file}")
         continue
 
     print(f"Extracting audio from {video_basename} ...")
