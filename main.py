@@ -10,7 +10,7 @@ if openai.api_key is None:
     raise RuntimeError("OPENAI_API_KEY is not set")
 
 
-# make sure env variables are set
+# test to make sure env variables are set
 if not os.getenv("CONFLUENCE_URL"):
     raise RuntimeError("CONFLUENCE_URL is not set")
 
@@ -86,6 +86,9 @@ audio_folder = './audio_extractions/'
 transcript_folder = './transcripts/'
 
 for audio_file in os.listdir(audio_folder):
+    if not audio_file.endswith(".wav"):
+        continue
+
     print(f"Transcribing audio from {video['title']} ...")
 
     audio_path = os.path.join(audio_folder, audio_file)
@@ -97,7 +100,7 @@ for audio_file in os.listdir(audio_folder):
         print(f"Transcript already exists, skipping: {basename}")
         continue
     """
-    
+
     transcript_text = f"TEMPORARY TRANSCRIPT PLACEHOLDER for {basename}"
 
     """
@@ -112,5 +115,21 @@ for audio_file in os.listdir(audio_folder):
     with open(transcript_file, "w", encoding="utf-8") as output:
         output.write(transcript_text)
     print(f"Created mock transcript: {transcript_file}")
+print()
 
+# upload transcripts back to confluence
+for transcript_file in os.listdir(transcript_folder):
+    if not transcript_file.endswith(".txt"):
+        continue
     
+    local_path = os.path.join(transcript_folder, transcript_file)
+    print(f"Uploading {transcript_file} to Confluence page {page_ID} ...")
+
+    confluence.attach_file(
+        filename=local_path,
+        page_id=page_ID,
+        title=transcript_file,
+        comment="Uploaded by video transcription script"
+    )
+    
+    print("Done")
