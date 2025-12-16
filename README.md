@@ -60,7 +60,7 @@ Set the following environment variables:
 The script creates the following local directories:
 
 - `downloaded_videos/` – downloaded video files
-- `audio/` – extracted WAV audio files
+- `audio_extractions/` – extracted WAV audio files
 - `transcripts/` – transcript text files
 
 Transcript files are uploaded back to the Confluence page as attachments.
