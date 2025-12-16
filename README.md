@@ -34,6 +34,7 @@ The script will:
 
 ```bash
 pip install -r requirements.txt
+```
 
 ### Environment variables
 
@@ -52,6 +53,7 @@ Set the following environment variables:
   Confluence API token
 
 - `OPENAI_API_KEY` 
+```
 
 ## Output
 
