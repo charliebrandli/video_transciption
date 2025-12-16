@@ -14,7 +14,7 @@ confluence = Confluence(
     password=os.getenv("CONFLUENCE_API_TOKEN"))
 
 #get page ID
-page_ID = 4224679955 # ID of Test Page with video attachments
+page_ID = 4225499148 # ID of Test Page with video attachments
 page = confluence.get_page_by_id(page_ID)
 print(f"Page title: {page['title']}")
 print()
