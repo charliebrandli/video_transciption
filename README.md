@@ -5,7 +5,8 @@ This script:
 - downloads them
 - extracts the audio
 - transcribes audio to text
-- uploads the transcripts back to the same Confluence page as an attachment
+- summarizes the transcript and extracts the key points of the video
+- uploads the summary back to the same Confluence page as an attachment
 
 ## What this script does
 
@@ -15,8 +16,9 @@ Given a Confluence page ID, the script will:
 2. Find video attachments (ending in: .mp4, .mov, .mkv) on the page
 3. Download the videos locally
 4. Extract audio from each video using ffmpeg
-5. Transcribe the audio to text using OpenAI's Whisper (currently mocked)
-6. Upload the transcript files back to the same Confluence page as attachments
+5. Transcribe the audio to text using OpenAI's Whisper 
+6. Summarize the transcript using OpenAI's Response
+7. Upload the summary files back to the same Confluence page as attachments
 
 ## Requirements
 
@@ -63,12 +65,13 @@ The script creates the following local directories:
 - `downloaded_videos/` – downloaded video files
 - `audio_extractions/` – extracted WAV audio files
 - `transcripts/` – transcript text files
+- `summaries/` - summary text files
 
 Transcript files are uploaded back to the Confluence page as attachments.
 
 ## Notes
 
-- If an audio or transcript file already exists locally, the script will skip reprocessing it.
+- If a file already exists locally, the script will skip reprocessing it.
 - Uploaded transcripts appear as page attachments and are not automatically inserted into the page body.
 - Confluence may take a short time to show newly uploaded attachments in the UI.
 
@@ -76,4 +79,5 @@ Transcript files are uploaded back to the Confluence page as attachments.
 
 - Video download: complete
 - Audio extraction: complete
-- Transcription: mocked (due to unavailable quota)
+- Transcription: complete
+- Summarization: complete
