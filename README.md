@@ -71,7 +71,7 @@ Transcript files are uploaded to Confluence as subpages
 
 ## Notes
 
-- If a file already exists locally, the script will skip reprocessing it.
+- If an audio file already exists locally, the script will skip reprocessing it.
 - Uploaded transcripts appear as subpages under the original page.
 
 ## Development Status
