@@ -38,21 +38,13 @@ pip install -r requirements.txt
 
 ### Environment variables
 
-```md
-### Environment variables
-
 Set the following environment variables:
 
-- `CONFLUENCE_URL`  
-  Example: `https://yourcompany.atlassian.net/wiki`
-
-- `CONFLUENCE_EMAIL`  
-  Your Atlassian account email
-
-- `CONFLUENCE_API_TOKEN`  
-  Confluence API token
-
-- `OPENAI_API_KEY` 
+```bash
+export CONFLUENCE_URL="<https://yourcompany.atlassian.net/wiki>"
+export CONFLUENCE_EMAIL="<Your Atlassian account email>"
+export CONFLUENCE_API_TOKEN="<Confluence API token>"
+export OPENAI_API_KEY="<OpenAI API key>"
 ```
 
 ## Usage
@@ -75,7 +67,7 @@ Transcript files are uploaded back to the Confluence page as attachments.
 
 ## Notes
 
-- If a file already exists locally, the script will skip reprocessing it.
+- If an audio or transcript file already exists locally, the script will skip reprocessing it.
 - Uploaded transcripts appear as page attachments and are not automatically inserted into the page body.
 - Confluence may take a short time to show newly uploaded attachments in the UI.
 
@@ -83,4 +75,4 @@ Transcript files are uploaded back to the Confluence page as attachments.
 
 - Video download: complete
 - Audio extraction: complete
-- Transcription: mocked (replace with Whisper when API quota is available)
+- Transcription: mocked (due to unavailable quota)
