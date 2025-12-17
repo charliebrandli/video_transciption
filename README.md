@@ -59,6 +59,7 @@ python main.py --page-id 123456789
 
 The script creates the following local directories:
 
+- `pages/<page_title>/` - subfolder for the page the script is run on
 - `downloaded_videos/` – downloaded video files
 - `audio_extractions/` – extracted WAV audio files
 - `transcripts/` – transcript text files
