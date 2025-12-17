@@ -182,7 +182,7 @@ def create_summary(override: bool, page_directory: str):
             instructions="""You are an assistant that summarizes transcripts of videos. Provide a concise summary of the following transcript.
             Include a section that lists the key points discussed in the video as bullet points. The last section should be the whole transcript inserted. 
             Base everything on the transcript provided. Do not make up any information. 
-            Create this in markdown format.
+            Create this in markdown format but don't include the markdown code fence.
             """,
             input=transcript_text,
         )
