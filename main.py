@@ -95,7 +95,7 @@ def extract_audio(videos: list):
         print("Done")
     print()
 
-def transcribe_audio():
+def transcribe_audio(mock=False):
     # transcribe the audio
     os.makedirs('./transcripts', exist_ok=True)
 
@@ -111,20 +111,24 @@ def transcribe_audio():
             audio_path = os.path.join(audio_folder, audio_file)
             basename = os.path.basename(audio_file).rsplit('.', 1)[0]
             transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
-        
 
-            if os.path.exists(transcript_file):
-                print(f"Transcript already exists, skipping: {basename}")
-                continue
+            if not mock:
+                if os.path.exists(transcript_file):
+                    print(f"Transcript already exists, skipping: {basename}")
+                    continue
+                
+                with open(audio_path, "rb") as f:
+                    transcript = openai.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=f
+                    )
+                transcipt_text = transcript['text']
 
-            with open(audio_path, "rb") as f:
-                transcript = openai.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=f
-                )
+            else:
+                transcipt_text = f"TEMPORARY MOCK TRANSCRIPT for {basename}"
 
             with open(transcript_file, "w", encoding="utf-8") as output:
-                output.write(transcript['text'])
+                output.write(transcipt_text)
             print(f"Transcribed {audio_file} -> {transcript_file}")
 
         except openai.RateLimitError:
@@ -158,7 +162,7 @@ def main():
     videos = get_video_attachments(page_ID)
     download_videos(videos)
     extract_audio(videos)
-    transcript_folder = transcribe_audio()
+    transcript_folder = transcribe_audio(mock=True)
     upload_transcripts(transcript_folder, page_ID)
 
 main()
