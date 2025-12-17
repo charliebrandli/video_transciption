@@ -36,6 +36,13 @@ confluence = Confluence(
     username=os.getenv("CONFLUENCE_EMAIL"),
     password=os.getenv("CONFLUENCE_API_TOKEN"))
 
+def create_page_directory(page_title: str):
+    os.makedirs('./pages', exist_ok=True) # make a directory for the pages
+    # create a directory for the page
+    page_directory = f'./pages/{page_title.replace(" ", "_")}'
+    os.makedirs(page_directory, exist_ok=True)
+    return page_directory
+
 def get_video_attachments(page_ID: str):
     # list all attachments on the page
     attachments = confluence.get_attachments_from_content(page_ID)
@@ -49,6 +56,10 @@ def get_video_attachments(page_ID: str):
 
     video_attachments = [att for att in attachments['results'] if att['title'].lower().endswith(video_extensions)]
 
+    if not video_attachments:
+        print("No video attachments found. Exiting.")
+        return
+
     print (f"Found {len(video_attachments)} videos: ")
     for video in video_attachments:
         print(video['title'])
@@ -56,29 +67,29 @@ def get_video_attachments(page_ID: str):
 
     return video_attachments
 
-def download_videos(videos: list):
+def download_videos(page_directory: str, videos: list):
     # download video files
-    os.makedirs('./downloaded_videos', exist_ok=True) # make a directory for the downloaded videos
+    os.makedirs(f'{page_directory}/downloaded_videos', exist_ok=True) # make a directory for the downloaded videos
 
     for video in videos:
         print(f"Downloading {video['title']} ...")  
         download_url = confluence.url + video['_links']['download']
         response = requests.get(download_url, auth=(confluence.username, confluence.password))
 
-        with open(f'./downloaded_videos/{video["title"]}', 'wb') as file:
+        with open(f'{page_directory}/downloaded_videos/{video["title"]}', 'wb') as file:
             file.write(response.content)
         print(f"Done")
     print(f"Downloaded {len(videos)} videos")
     print()
 
-def extract_audio(videos: list):
+def extract_audio(page_directory: str, videos: list):
     # extract audio from videos
-    os.makedirs('./audio_extractions', exist_ok=True) # make a directory for the audio
+    os.makedirs(f'{page_directory}/audio_extractions', exist_ok=True) # make a directory for the audio
 
     for video in videos:
-        video_file = f'./downloaded_videos/{video["title"]}'
+        video_file = f'{page_directory}/downloaded_videos/{video["title"]}'
         video_basename = video["title"].rsplit(".", 1)[0] # filename without extension
-        audio_file = f'./audio_extractions/{video_basename}.wav' # add .wav extension
+        audio_file = f'{page_directory}/audio_extractions/{video_basename}.wav' # add .wav extension
 
 
         if os.path.exists(audio_file):
@@ -95,12 +106,12 @@ def extract_audio(videos: list):
         print("Done")
     print()
 
-def transcribe_audio(mock=False):
+def transcribe_audio(page_directory: str, mock=False):
     # transcribe the audio
-    os.makedirs('./transcripts', exist_ok=True)
+    os.makedirs(f'{page_directory}/transcripts', exist_ok=True)
 
-    audio_folder = './audio_extractions/'
-    transcript_folder = './transcripts/'
+    audio_folder = f'{page_directory}/audio_extractions/'
+    transcript_folder = f'{page_directory}/transcripts/'
 
     for audio_file in os.listdir(audio_folder):
         try:
@@ -157,12 +168,16 @@ def upload_transcripts(transcript_folder, page_ID: str):
 def main():
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
-    print(f"Page title: {page['title']}")
+    page_title = page['title']
+    print(f"Page title: {page_title}")
     print()
+    page_directory = create_page_directory(page_title)
     videos = get_video_attachments(page_ID)
-    download_videos(videos)
-    extract_audio(videos)
-    transcript_folder = transcribe_audio()
+    if not videos:
+        return
+    download_videos(page_directory, videos)
+    extract_audio(page_directory, videos)
+    transcript_folder = transcribe_audio(page_directory)
     upload_transcripts(transcript_folder, page_ID)
 
 main()
