@@ -1,3 +1,4 @@
 atlassian-python-api
 requests
 openai
+markdown

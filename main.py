@@ -1,9 +1,11 @@
 import argparse
 from atlassian import Confluence
+import markdown
 import openai
 import os
 import requests
 import subprocess
+import json
 
 # create an argument parser
 parser = argparse.ArgumentParser(
@@ -14,6 +16,11 @@ parser.add_argument(
     "--page-id",
     required=True,
     help="Confluence page ID containing video attachments"
+)
+parser.add_argument(
+    "--override",
+    required=True,
+    help="Override existing transcripts and summaries if they exist",
 )
 args = parser.parse_args()
 
@@ -91,7 +98,6 @@ def extract_audio(page_directory: str, videos: list):
         video_basename = video["title"].rsplit(".", 1)[0] # filename without extension
         audio_file = f'{page_directory}/audio_extractions/{video_basename}.wav' # add .wav extension
 
-
         if os.path.exists(audio_file):
             print(f"Audio already exists, skipping: {audio_file}")
             continue
@@ -106,7 +112,7 @@ def extract_audio(page_directory: str, videos: list):
         print("Done")
     print()
 
-def transcribe_audio(page_directory: str, mock=False):
+def transcribe_audio(override: bool, page_directory: str, mock=False):
     # transcribe the audio
     os.makedirs(f'{page_directory}/transcripts', exist_ok=True)
 
@@ -124,9 +130,10 @@ def transcribe_audio(page_directory: str, mock=False):
             transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
 
             if not mock:
-                if os.path.exists(transcript_file):
-                    print(f"Transcript already exists, skipping: {basename}")
-                    continue
+                if not override:
+                    if os.path.exists(transcript_file):
+                        print(f"Transcript already exists, skipping: {basename}")
+                        continue
                 
                 with open(audio_path, "rb") as f:
                     transcript = openai.audio.transcriptions.create(
@@ -145,8 +152,8 @@ def transcribe_audio(page_directory: str, mock=False):
         except openai.RateLimitError:
             print("OpenAI rate limit exceeded. Please try again later.")
     print()
-    
-def create_summary(page_directory: str):
+
+def create_summary(override: bool, page_directory: str):
     # create a summary of the transcript
     os.makedirs(f'{page_directory}/summaries', exist_ok=True)
     summary_folder = f'{page_directory}/summaries/'
@@ -159,54 +166,60 @@ def create_summary(page_directory: str):
         print(f"Creating summary for {transcript_file} ...")
         transcript_path = os.path.join(transcript_folder, transcript_file)
         basename = transcript_file.rsplit('.', 1)[0]
-        summary_file = os.path.join(summary_folder, f"{basename}.summary.txt")
+        summary_file = os.path.join(summary_folder, f"{basename}.summary.md")
 
-        if os.path.exists(summary_file):
-            print(f"Summary already exists, skipping: {basename}")
-            continue
+        if not override:
+            if os.path.exists(summary_file):
+                print(f"Summary already exists, skipping: {basename}")
+                continue
         
         with open(transcript_path, "r", encoding="utf-8") as f:
             transcript_text = f.read()
 
         client = openai.OpenAI()
         response = client.responses.create(
-            model="gpt-4.1",
+            model="gpt-5.2",
             instructions="""You are an assistant that summarizes transcripts of videos. Provide a concise summary of the following transcript.
-            Include a section that lists the key points discussed in the video as bullet points. The last section should be the whole transcript inserted. Base everything on the transcript provided. Do not make up any information.
+            Include a section that lists the key points discussed in the video as bullet points. The last section should be the whole transcript inserted. 
+            Base everything on the transcript provided. Do not make up any information. 
+            Create this in markdown format.
             """,
             input=transcript_text,
         )
 
         with open(summary_file, "w", encoding="utf-8") as output:
             output.write(response.output_text)
-        print(f"Created summary -> {basename}.summary.txt")
+        print(f"Created summary -> {basename}.summary.md")
     print()
 
-def create_subpage_for_summary(page_directory: str, page_ID: str, page_space_key: str):
+def create_subpage_for_summary(override: bool, page_directory: str, page_ID: str):
     # create a subpage for the summary
     summary_folder = f'{page_directory}/summaries/'
     for summary in os.listdir(summary_folder):
-        if not summary.endswith(".txt"):
-            continue
-        
         local_path = os.path.join(summary_folder, summary)
         basename = summary.rsplit('.', 2)[0]
         print(f"Creating subpage for {summary} ...")
 
-        if confluence.get_page_by_title(space=page_space_key, title=f"{basename} Summary"):
-            print(f"Page already exists, skipping: {basename} Summary")
-            continue
+        if not override:
+            if confluence.get_page_by_title(space=page_space_key, title=f"{basename} Summary"):
+                print(f"Page already exists, skipping: {basename} Summary")
+                continue
+        
+        md_content = open(local_path, "r").read()
+        html_content = markdown.markdown(md_content)
 
-        confluence.create_page(
-            space=page_space_key,
-            title=f"{basename} Summary",
-            body=open(local_path, "r").read(),
-            parent_id=page_ID
+
+        confluence.update_or_create(
+            parent_id=page_ID,
+            title=f"{basename} AI Transcription Summary",
+            body=html_content,
+            representation='storage'
         )
-        print("Done")
+        print(f"Created subpage: {basename} AI Transcription Summary")
     print()
 
 def main():
+    override = args.override.lower() == 'true'
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
     page_space_key = page['space']['key']
@@ -219,8 +232,8 @@ def main():
         return
     download_videos(page_directory, videos)
     extract_audio(page_directory, videos)
-    transcribe_audio(page_directory)
-    create_summary(page_directory)
-    create_subpage_for_summary(page_directory, page_ID, page_space_key)
+    transcribe_audio(override, page_directory)
+    create_summary(override, page_directory)
+    create_subpage_for_summary(override, page_directory, page_ID)
 
 main()
