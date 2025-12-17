@@ -182,28 +182,34 @@ def create_summary(page_directory: str):
         print(f"Created summary -> {basename}.summary.txt")
     print()
 
-def upload_summaries(page_directory: str, page_ID: str):
-    # upload transcripts back to confluence
+def create_subpage_for_summary(page_directory: str, page_ID: str, page_space_key: str):
+    # create a subpage for the summary
     summary_folder = f'{page_directory}/summaries/'
     for summary in os.listdir(summary_folder):
         if not summary.endswith(".txt"):
             continue
-
-        local_path = os.path.join(summary_folder, summary)
-        print(f"Uploading {summary} to Confluence page {page_ID} ...")
-
-        confluence.attach_file(
-            filename=local_path,
-            page_id=page_ID,
-            title=summary,
-            comment="Uploaded by video transcription script"
-        )
         
+        local_path = os.path.join(summary_folder, summary)
+        basename = summary.rsplit('.', 2)[0]
+        print(f"Creating subpage for {summary} ...")
+
+        if confluence.get_page_by_title(space=page_space_key, title=f"{basename} Summary"):
+            print(f"Page already exists, skipping: {basename} Summary")
+            continue
+
+        confluence.create_page(
+            space=page_space_key,
+            title=f"{basename} Summary",
+            body=open(local_path, "r").read(),
+            parent_id=page_ID
+        )
         print("Done")
+    print()
 
 def main():
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
+    page_space_key = page['space']['key']
     page_title = page['title']
     print(f"Page title: {page_title}")
     print()
@@ -215,6 +221,6 @@ def main():
     extract_audio(page_directory, videos)
     transcribe_audio(page_directory)
     create_summary(page_directory)
-    upload_summaries(page_directory, page_ID)
+    create_subpage_for_summary(page_directory, page_ID, page_space_key)
 
 main()
