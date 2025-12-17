@@ -45,7 +45,7 @@ def get_video_attachments(page_ID: str):
     print()
 
     # filter attachments to find video files
-    video_extensions = (".mp4", ".mov", ".mkv")
+    video_extensions = (".mp4", ".mov", ".mkv") #TODO: Check if this is all the attachments we use
 
     video_attachments = [att for att in attachments['results'] if att['title'].lower().endswith(video_extensions)]
 
@@ -122,7 +122,7 @@ def transcribe_audio(mock=False):
                         model="whisper-1",
                         file=f
                     )
-                transcipt_text = transcript['text']
+                transcipt_text = transcript.text
 
             else:
                 transcipt_text = f"TEMPORARY MOCK TRANSCRIPT for {basename}"
@@ -162,7 +162,7 @@ def main():
     videos = get_video_attachments(page_ID)
     download_videos(videos)
     extract_audio(videos)
-    transcript_folder = transcribe_audio(mock=True)
+    transcript_folder = transcribe_audio()
     upload_transcripts(transcript_folder, page_ID)
 
 main()
