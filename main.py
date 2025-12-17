@@ -102,38 +102,35 @@ os.makedirs('./transcripts', exist_ok=True)
 audio_folder = './audio_extractions/'
 transcript_folder = './transcripts/'
 
-for audio_file in os.listdir(audio_folder):
-    if not audio_file.endswith(".wav"):
-        continue
+try:
+    for audio_file in os.listdir(audio_folder):
+        if not audio_file.endswith(".wav"):
+            continue
 
-    print(f"Transcribing audio from {video['title']} ...")
-
-    audio_path = os.path.join(audio_folder, audio_file)
-    basename = os.path.basename(audio_file).rsplit('.', 1)[0]
-    transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
+        print(f"Transcribing audio from {audio_file} ...")
+        audio_path = os.path.join(audio_folder, audio_file)
+        basename = os.path.basename(audio_file).rsplit('.', 1)[0]
+        transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
     
-    """
-    if os.path.exists(transcript_file):
-        print(f"Transcript already exists, skipping: {basename}")
-        continue
-    """
 
-    transcript_text = f"TEMPORARY TRANSCRIPT PLACEHOLDER for {basename}"
+        if os.path.exists(transcript_file):
+            print(f"Transcript already exists, skipping: {basename}")
+            continue
 
-    """
-    audio_file = f'./audio_extractions/{basename}.wav'
-    with open(audio_file, "rb") as f:
-    transcript = openai.audio.transcriptions.create(
-        model="whisper-1",
-        file=f
-    )
-    """
+        with open(audio_path, "rb") as f:
+            transcript = openai.audio.transcriptions.create(
+                model="whisper-1",
+                file=f
+            )
 
-    with open(transcript_file, "w", encoding="utf-8") as output:
-        output.write(transcript_text)
-    print(f"Created mock transcript: {transcript_file}")
-print()
+        with open(transcript_file, "w", encoding="utf-8") as output:
+            output.write(transcript['text'])
+        print(f"Transcribed {audio_file} -> {transcript_file}")
+    print()
 
+except openai.RateLimitError:
+    print("OpenAI rate limit exceeded. Please try again later.")
+    
 # upload transcripts back to confluence
 for transcript_file in os.listdir(transcript_folder):
     if not transcript_file.endswith(".txt"):
@@ -150,3 +147,4 @@ for transcript_file in os.listdir(transcript_folder):
     )
     
     print("Done")
+
