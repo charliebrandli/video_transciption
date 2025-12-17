@@ -133,22 +133,58 @@ def transcribe_audio(page_directory: str, mock=False):
                         model="whisper-1",
                         file=f
                     )
-                transcipt_text = transcript.text
+                transcript_text = transcript.text
 
             else:
-                transcipt_text = f"TEMPORARY MOCK TRANSCRIPT for {basename}"
+                transcript_text = f"TEMPORARY MOCK TRANSCRIPT for {basename}"
 
             with open(transcript_file, "w", encoding="utf-8") as output:
-                output.write(transcipt_text)
-            print(f"Transcribed {audio_file} -> {transcript_file}")
+                output.write(transcript_text)
+            print(f"Transcribed {audio_file} -> {basename}.txt")
 
         except openai.RateLimitError:
             print("OpenAI rate limit exceeded. Please try again later.")
     print()
-    return transcript_folder
     
-def upload_transcripts(transcript_folder, page_ID: str):
+def create_summary(page_directory: str):
+    # create a summary of the transcript
+    os.makedirs(f'{page_directory}/summaries', exist_ok=True)
+    summary_folder = f'{page_directory}/summaries/'
+    transcript_folder = f'{page_directory}/transcripts/'
+
+    for transcript_file in os.listdir(transcript_folder):
+        if not transcript_file.endswith(".txt"):
+            continue
+
+        print(f"Creating summary for {transcript_file} ...")
+        transcript_path = os.path.join(transcript_folder, transcript_file)
+        basename = transcript_file.rsplit('.', 1)[0]
+        summary_file = os.path.join(summary_folder, f"{basename}.summary.txt")
+
+        if os.path.exists(summary_file):
+            print(f"Summary already exists, skipping: {basename}")
+            continue
+        
+        with open(transcript_path, "r", encoding="utf-8") as f:
+            transcript_text = f.read()
+
+        client = openai.OpenAI()
+        response = client.responses.create(
+            model="gpt-4.1",
+            instructions="""You are an assistant that summarizes transcripts of videos. Provide a concise summary of the following transcript.
+            Include a section that lists the key points discussed in the video as bullet points. Base everything on the transcript provided. Do not make up any information.
+            """,
+            input=transcript_text,
+        )
+
+        with open(summary_file, "w", encoding="utf-8") as output:
+            output.write(response.output_text)
+        print(f"Created summary -> {basename}.summary.txt")
+    print()
+
+def upload_transcripts(page_ID: str):
     # upload transcripts back to confluence
+    transcript_folder = f'{page_directory}/transcripts/'
     for transcript_file in os.listdir(transcript_folder):
         if not transcript_file.endswith(".txt"):
             continue
@@ -177,7 +213,8 @@ def main():
         return
     download_videos(page_directory, videos)
     extract_audio(page_directory, videos)
-    transcript_folder = transcribe_audio(page_directory)
-    upload_transcripts(transcript_folder, page_ID)
+    transcribe_audio(page_directory)
+    create_summary(page_directory)
+    upload_transcripts(page_ID)
 
 main()
