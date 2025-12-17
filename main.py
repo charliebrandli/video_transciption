@@ -172,7 +172,7 @@ def create_summary(page_directory: str):
         response = client.responses.create(
             model="gpt-4.1",
             instructions="""You are an assistant that summarizes transcripts of videos. Provide a concise summary of the following transcript.
-            Include a section that lists the key points discussed in the video as bullet points. Base everything on the transcript provided. Do not make up any information.
+            Include a section that lists the key points discussed in the video as bullet points. The last section should be the whole transcript inserted. Base everything on the transcript provided. Do not make up any information.
             """,
             input=transcript_text,
         )
@@ -182,20 +182,20 @@ def create_summary(page_directory: str):
         print(f"Created summary -> {basename}.summary.txt")
     print()
 
-def upload_transcripts(page_ID: str):
+def upload_summaries(page_directory: str, page_ID: str):
     # upload transcripts back to confluence
-    transcript_folder = f'{page_directory}/transcripts/'
-    for transcript_file in os.listdir(transcript_folder):
-        if not transcript_file.endswith(".txt"):
+    summary_folder = f'{page_directory}/summaries/'
+    for summary in os.listdir(summary_folder):
+        if not summary.endswith(".txt"):
             continue
-        
-        local_path = os.path.join(transcript_folder, transcript_file)
-        print(f"Uploading {transcript_file} to Confluence page {page_ID} ...")
+
+        local_path = os.path.join(summary_folder, summary)
+        print(f"Uploading {summary} to Confluence page {page_ID} ...")
 
         confluence.attach_file(
             filename=local_path,
             page_id=page_ID,
-            title=transcript_file,
+            title=summary,
             comment="Uploaded by video transcription script"
         )
         
@@ -215,6 +215,6 @@ def main():
     extract_audio(page_directory, videos)
     transcribe_audio(page_directory)
     create_summary(page_directory)
-    upload_transcripts(page_ID)
+    upload_summaries(page_directory, page_ID)
 
 main()
