@@ -201,7 +201,7 @@ def create_subpage_for_summary(override: bool, page_directory: str, page_ID: str
         print(f"Creating subpage for {summary} ...")
 
         if not override:
-            if confluence.get_page_by_title(space=page_space_key, title=f"{basename} Summary"):
+            if confluence.get_page_by_title(title=f"{basename} Summary"):
                 print(f"Page already exists, skipping: {basename} Summary")
                 continue
         
@@ -222,7 +222,6 @@ def main():
     override = args.override.lower() == 'true'
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
-    page_space_key = page['space']['key']
     page_title = page['title']
     print(f"Page title: {page_title}")
     print()
