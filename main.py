@@ -34,14 +34,13 @@ def test_env_variables():
         raise RuntimeError("CONFLUENCE_EMAIL is not set")
     elif not os.getenv("CONFLUENCE_API_TOKEN"):
         raise RuntimeError("CONFLUENCE_API_TOKEN is not set")
-    """
     elif not os.getenv("ZOOM_ACCOUNT_ID"):
         raise RuntimeError("ZOOM_ACCOUNT_ID is not set")
     elif not os.getenv("ZOOM_CLIENT_ID"):
         raise RuntimeError("ZOOM_CLIENT_ID is not set")
     elif not os.getenv("ZOOM_CLIENT_SECRET"):
         raise RuntimeError("ZOOM_CLIENT_SECRET is not set")
-    """
+
 
 # set OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -89,9 +88,9 @@ def get_zoom_access_token():
         'https://zoom.us/oauth/token',
         params={
             'grant_type': 'account_credentials',
-            'account_id': 'c1zAf123TeWqt_YIxaNA6g'
+            'account_id': os.getenv("ZOOM_ACCOUNT_ID")
         },
-        auth=('VghugkiPSFW2X6k1zvFOcQ', '02FZ5R2wWOp3LQVtdu0OnWNEROw9yoiN')
+        auth=(os.getenv("ZOOM_CLIENT_ID"), os.getenv("ZOOM_CLIENT_SECRET"))
     )
     print(f"Status code: {response.status_code}")
     print(f"Response body: {response.text}")
