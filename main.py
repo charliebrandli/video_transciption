@@ -24,25 +24,26 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# test to make sure env variables are set
-if not os.getenv("OPENAI_API_KEY"):
-    raise RuntimeError("OPENAI_API_KEY is not set")
-elif not os.getenv("CONFLUENCE_URL"):
-    raise RuntimeError("CONFLUENCE_URL is not set")
-elif not os.getenv("CONFLUENCE_EMAIL"):
-    raise RuntimeError("CONFLUENCE_EMAIL is not set")
-elif not os.getenv("CONFLUENCE_API_TOKEN"):
-    raise RuntimeError("CONFLUENCE_API_TOKEN is not set")
-"""
-elif not os.getenv("ZOOM_ACCOUNT_ID"):
-    raise RuntimeError("ZOOM_ACCOUNT_ID is not set")
-elif not os.getenv("ZOOM_CLIENT_ID"):
-    raise RuntimeError("ZOOM_CLIENT_ID is not set")
-elif not os.getenv("ZOOM_CLIENT_SECRET"):
-    raise RuntimeError("ZOOM_CLIENT_SECRET is not set")
-"""
+def test_env_variables():
+    # test to make sure env variables are set
+    if not os.getenv("OPENAI_API_KEY"):
+        raise RuntimeError("OPENAI_API_KEY is not set")
+    elif not os.getenv("CONFLUENCE_URL"):
+        raise RuntimeError("CONFLUENCE_URL is not set")
+    elif not os.getenv("CONFLUENCE_EMAIL"):
+        raise RuntimeError("CONFLUENCE_EMAIL is not set")
+    elif not os.getenv("CONFLUENCE_API_TOKEN"):
+        raise RuntimeError("CONFLUENCE_API_TOKEN is not set")
+    """
+    elif not os.getenv("ZOOM_ACCOUNT_ID"):
+        raise RuntimeError("ZOOM_ACCOUNT_ID is not set")
+    elif not os.getenv("ZOOM_CLIENT_ID"):
+        raise RuntimeError("ZOOM_CLIENT_ID is not set")
+    elif not os.getenv("ZOOM_CLIENT_SECRET"):
+        raise RuntimeError("ZOOM_CLIENT_SECRET is not set")
+    """
 
-# get OpenAI API key
+# set OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # create Confluence Client
@@ -254,6 +255,7 @@ def create_subpage_for_summary(override: bool, page_directory: str, page_ID: str
     print()
 
 def main():
+    test_env_variables()
     get_zoom_access_token()
     """
     override = args.override.lower() == 'true'
