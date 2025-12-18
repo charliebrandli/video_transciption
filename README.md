@@ -1,7 +1,7 @@
 # Confluence Video Transcription
 
 This script:
-- finds video attachments on a Cofluence page
+- finds video attachments on a Confluence page
 - downloads them
 - extracts the audio
 - transcribes audio to text
