@@ -33,6 +33,14 @@ elif not os.getenv("CONFLUENCE_EMAIL"):
     raise RuntimeError("CONFLUENCE_EMAIL is not set")
 elif not os.getenv("CONFLUENCE_API_TOKEN"):
     raise RuntimeError("CONFLUENCE_API_TOKEN is not set")
+"""
+elif not os.getenv("ZOOM_ACCOUNT_ID"):
+    raise RuntimeError("ZOOM_ACCOUNT_ID is not set")
+elif not os.getenv("ZOOM_CLIENT_ID"):
+    raise RuntimeError("ZOOM_CLIENT_ID is not set")
+elif not os.getenv("ZOOM_CLIENT_SECRET"):
+    raise RuntimeError("ZOOM_CLIENT_SECRET is not set")
+"""
 
 # get OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -50,7 +58,7 @@ def create_page_directory(page_title: str):
     os.makedirs(page_directory, exist_ok=True)
     return page_directory
 
-def get_video_attachments(page_ID: str):
+def get_confluence_video_attachments(page_ID: str):
     # list all attachments on the page
     attachments = confluence.get_attachments_from_content(page_ID)
     print("Attachments: ")
@@ -73,6 +81,33 @@ def get_video_attachments(page_ID: str):
     print()
 
     return video_attachments
+
+def get_zoom_access_token():
+    # get zoom access token
+    response = requests.post(
+        'https://zoom.us/oauth/token',
+        params={
+            'grant_type': 'account_credentials',
+            'account_id': 'c1zAf123TeWqt_YIxaNA6g'
+        },
+        auth=('VghugkiPSFW2X6k1zvFOcQ', '02FZ5R2wWOp3LQVtdu0OnWNEROw9yoiN')
+    )
+    print(f"Status code: {response.status_code}")
+    print(f"Response body: {response.text}")
+    
+    response_data = response.json()
+    return response_data['access_token']
+
+def get_zoom_recording_links(page_ID: str):
+    # find links to zoom recordings
+    # TODO: implement this function
+    page = confluence.get_page_by_id(page_ID, expand='body.storage')
+    html_content = page['body']['storage']['value']
+    return [] 
+
+def download_zoom_recordings():
+    # download zoom recordings
+    return
 
 def download_videos(page_directory: str, videos: list):
     # download video files
@@ -219,6 +254,8 @@ def create_subpage_for_summary(override: bool, page_directory: str, page_ID: str
     print()
 
 def main():
+    get_zoom_access_token()
+    """
     override = args.override.lower() == 'true'
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
@@ -226,13 +263,16 @@ def main():
     print(f"Page title: {page_title}")
     print()
     page_directory = create_page_directory(page_title)
-    videos = get_video_attachments(page_ID)
+    videos_from_confluence = get_confluence_video_attachments(page_ID)
+    zoom_videos = get_zoom_recording_links(page_ID)
+    videos = videos_from_confluence + zoom_videos
     if not videos:
         return
+    download_zoom_recordings()
     download_videos(page_directory, videos)
     extract_audio(page_directory, videos)
     transcribe_audio(override, page_directory)
     create_summary(override, page_directory)
     create_subpage_for_summary(override, page_directory, page_ID)
-
+    """
 main()
