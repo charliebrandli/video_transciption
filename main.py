@@ -1,5 +1,6 @@
 import argparse
 from atlassian import Confluence
+import glob
 import markdown
 import openai
 import os
@@ -92,28 +93,64 @@ def get_zoom_access_token():
         },
         auth=(os.getenv("ZOOM_CLIENT_ID"), os.getenv("ZOOM_CLIENT_SECRET"))
     )
-    print(f"Status code: {response.status_code}")
-    print(f"Response body: {response.text}")
-    
     response_data = response.json()
     return response_data['access_token']
 
-def get_zoom_recording_links(page_ID: str):
-    # find links to zoom recordings
-    # TODO: implement this function
-    page = confluence.get_page_by_id(page_ID, expand='body.storage')
-    html_content = page['body']['storage']['value']
-    return [] 
+def get_meeting_recordings(zoom_access_token: str, meeting_ID: str):
+    # get zoom meeting recordings
+    headers = {
+        'Authorization': f'Bearer {zoom_access_token}',
+        'Content-Type': 'application/json'
+    }
+    response = requests.get(
+        f'https://api.zoom.us/v2/meetings/{meeting_ID}/recordings',
+        headers=headers
+    )
+    recording_data = response.json()
+    return recording_data
 
-def download_zoom_recordings():
+def download_zoom_recordings(recording_data, page_directory: str, access_token:str):
     # download zoom recordings
-    return
+    os.makedirs(f'{page_directory}/downloaded_videos', exist_ok=True) # make a directory for the downloaded videos
+    recordings = []
+    for recording_file in recording_data['recording_files']:
+        if recording_file['file_type'] != 'MP4': # only download video files 
+            continue
+        filename = f"{recording_data['topic']}_{recording_data['start_time']}"
+
+        # Check if video already exists
+        video_path = f'{page_directory}/downloaded_videos/{filename}.mp4'
+        if os.path.exists(video_path):
+            print(f"Video already exists, skipping: {filename}.mp4")
+            recordings.append({
+                'title': f"{filename}.mp4",
+                'recording_file': recording_file
+            })
+            continue  # Skip downloading
+
+        recordings.append({
+            'title': f"{filename}.mp4",
+            'recording_file': recording_file
+        })
+        print(f"Downloading {filename} ...") 
+        download_url = f"{recording_file['download_url']}"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        response = requests.get(download_url, headers=headers)
+
+        with open(f'{page_directory}/downloaded_videos/{filename}.mp4', 'wb') as file:
+            file.write(response.content)
+        print("Done")
+    return recordings
 
 def download_videos(page_directory: str, videos: list):
     # download video files
     os.makedirs(f'{page_directory}/downloaded_videos', exist_ok=True) # make a directory for the downloaded videos
 
     for video in videos:
+        if os.path.exists(f'{page_directory}/downloaded_videos/{video["title"]}'):
+            print(f"Video already exists, skipping: {video['title']}")
+            continue    
+
         print(f"Downloading {video['title']} ...")  
         download_url = confluence.url + video['_links']['download']
         response = requests.get(download_url, auth=(confluence.username, confluence.password))
@@ -131,23 +168,65 @@ def extract_audio(page_directory: str, videos: list):
     for video in videos:
         video_file = f'{page_directory}/downloaded_videos/{video["title"]}'
         video_basename = video["title"].rsplit(".", 1)[0] # filename without extension
-        audio_file = f'{page_directory}/audio_extractions/{video_basename}.wav' # add .wav extension
+        audio_file = f'{page_directory}/audio_extractions/{video_basename}.mp3' # add .mp3 extension
 
+        # Check if audio file already exists
         if os.path.exists(audio_file):
             print(f"Audio already exists, skipping: {audio_file}")
+            continue
+        # Check if audio chunks already exist
+        existing_chunks = glob.glob(f'{page_directory}/audio_extractions/{video_basename}_part*.mp3')
+        if existing_chunks:
+            print(f"Audio chunks already exist, skipping extraction: {video_basename}")
             continue
 
         print(f"Extracting audio from {video_basename} ...")
         subprocess.run([
             'ffmpeg',
             '-i', video_file,
+            '-vn', # no video
             '-ac', '1', # mono audio
+            '-ar', '16000', # 16kHz
+            '-b:a', '64k', # 64kbps bitrate
+            '-f', 'mp3',
             audio_file
         ], check=True)
         print("Done")
     print()
 
-def transcribe_audio(override: bool, page_directory: str, mock=False):
+def split_audio_file(audio_path: str, chunk_duration: int = 3000):
+    # split audio file into chunks of chunk_duration seconds
+    basename = os.path.basename(audio_path).rsplit('.', 1)[0]
+    output_pattern = f"{os.path.dirname(audio_path)}/{basename}_part%03d.mp3"
+
+    try:
+        subprocess.run([
+            'ffmpeg',
+            '-i', audio_path,
+            '-f', 'segment',
+            '-segment_time', str(chunk_duration),
+            '-c', 'copy',
+            output_pattern
+        ], check=True)
+
+        os.remove(audio_path)  # remove the original large file
+        print("Done")
+    except subprocess.CalledProcessError as e:
+        print(f"Error splitting audio file {audio_path}: {e}")
+
+def transcribe_chunks(chunk_files: list):
+    all_transcripts = []
+    for chunk_file in chunk_files:
+        print(f"Transcribing chunk {chunk_file} ...")
+        with open(chunk_file, "rb") as f:
+            transcript = openai.audio.transcriptions.create(
+                model="whisper-1",
+                file=f
+            )
+        all_transcripts.append(transcript.text)
+    return " ".join(all_transcripts)
+    
+def transcribe_audio(override: bool, page_directory: str):
     # transcribe the audio
     os.makedirs(f'{page_directory}/transcripts', exist_ok=True)
 
@@ -156,15 +235,23 @@ def transcribe_audio(override: bool, page_directory: str, mock=False):
 
     for audio_file in os.listdir(audio_folder):
         try:
-            if not audio_file.endswith(".wav"):
+            if not audio_file.endswith(".mp3"):
                 continue
 
-            print(f"Transcribing audio from {audio_file} ...")
             audio_path = os.path.join(audio_folder, audio_file)
             basename = os.path.basename(audio_file).rsplit('.', 1)[0]
             transcript_file = os.path.join(transcript_folder, f"{basename}.txt")
 
-            if not mock:
+            # if audio file is larger than 25MB, split into chunks
+            if os.path.getsize(audio_path) > 25 * 1024 * 1024:
+                print(f"Audio file {audio_file} is larger than 25MB, splitting into chunks ...")
+                split_audio_file(audio_path, chunk_duration=3000)  # split into 50 minute chunks
+                chunk_files = sorted(glob.glob(f"{os.path.dirname(audio_path)}/{basename}_part*.mp3"))
+                transcript_text = transcribe_chunks(chunk_files)
+
+            # if audio file smaller than 25MB, transcribe directly
+            else:
+                print(f"Transcribing audio from {audio_file} ...")
                 if not override:
                     if os.path.exists(transcript_file):
                         print(f"Transcript already exists, skipping: {basename}")
@@ -177,15 +264,13 @@ def transcribe_audio(override: bool, page_directory: str, mock=False):
                     )
                 transcript_text = transcript.text
 
-            else:
-                transcript_text = f"TEMPORARY MOCK TRANSCRIPT for {basename}"
-
             with open(transcript_file, "w", encoding="utf-8") as output:
                 output.write(transcript_text)
             print(f"Transcribed {audio_file} -> {basename}.txt")
 
         except openai.RateLimitError:
             print("OpenAI rate limit exceeded. Please try again later.")
+
     print()
 
 def create_summary(override: bool, page_directory: str):
@@ -255,21 +340,26 @@ def create_subpage_for_summary(override: bool, page_directory: str, page_ID: str
 
 def main():
     test_env_variables()
-    get_zoom_access_token()
-    """
     override = args.override.lower() == 'true'
+    # For testing Zoom integration only
+    zoom_access_token = get_zoom_access_token()
+    recording_data = get_meeting_recordings(zoom_access_token, "89612627128")
+    page_directory = './test_download'  # temporary test directory
+    recordings = download_zoom_recordings(recording_data, page_directory, zoom_access_token)
+    extract_audio(page_directory, recordings)
+    transcribe_audio(override, page_directory)
+    create_summary(override, page_directory)
+    
+    """
     page_ID = args.page_id
     page = confluence.get_page_by_id(page_ID)
     page_title = page['title']
     print(f"Page title: {page_title}")
     print()
     page_directory = create_page_directory(page_title)
-    videos_from_confluence = get_confluence_video_attachments(page_ID)
-    zoom_videos = get_zoom_recording_links(page_ID)
-    videos = videos_from_confluence + zoom_videos
+    videos = get_confluence_video_attachments(page_ID)
     if not videos:
         return
-    download_zoom_recordings()
     download_videos(page_directory, videos)
     extract_audio(page_directory, videos)
     transcribe_audio(override, page_directory)
